@@ -1,3 +1,23 @@
+
+//-------------------------------------------- ASCIIDOC:
+buildscript {
+    repositories {
+        jcenter()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+
+    dependencies {
+        classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.7'
+        classpath 'gradle.plugin.org.aim42:htmlSanityCheck:1.0.0-RC-1'
+    }
+}
+//-------------------------------------------- /ASCIIDOC
+
+
+
+
 // Build library: gradlew build
 // Install library locally for development with: gradlew install
 
@@ -8,6 +28,16 @@ plugins {
     id 'com.enonic.xp.base' version '2.0.0'
     id "com.moowork.node" version "1.3.1"
 }
+
+
+
+//-------------------------------------------- ASCIIDOC:
+apply plugin: 'org.asciidoctor.convert'
+apply plugin: 'org.aim42.htmlSanityCheck'
+//-------------------------------------------- /ASCIIDOC
+
+
+
 
 dependencies {
     compile "com.enonic.xp:lib-io:${xpVersion}"
@@ -26,6 +56,45 @@ dependencies {
     
     testCompile "com.enonic.xp:testing:${xpVersion}"
 }
+
+
+
+//-------------------------------------------- ASCIIDOC:
+asciidoctor {
+    sourceDir = file('docs')
+    outputDir = file('build/docs')
+
+    requires project.file('verbose-mode.rb')
+
+    attributes 'source-highlighter': 'coderay'
+
+    resources {
+        from(sourceDir) {
+            include '**/media/**'
+        }
+    }
+}
+asciidoctor.inputs.dir("docs")
+asciidoctor.outputs.dir("build/docs")
+
+htmlSanityCheck {
+
+    dependsOn asciidoctor
+
+    sourceDir = new File( "$buildDir/docs/html5" )
+
+    // files to check - in Set-notation
+    sourceDocuments = [ "index.html"]
+
+    // where to put results of sanityChecks...
+    checkingResultsDir = new File( "$buildDir/report/htmlchecks" )
+    //checkExternalLinks = false
+
+    // fail build on errors?
+    failOnErrors = true
+}
+//-------------------------------------------- /ASCIIDOC
+
 
 node {
     download = true
