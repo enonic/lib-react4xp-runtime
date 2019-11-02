@@ -1,0 +1,249 @@
+= React4xp: API Reference
+:toc: right
+:imagesdir: media/
+
+image::react4xp.svg["React4xp logo",width=256px,link=index.html]
+link:index.html[<- Back: React4xp technical reference]
+
+This is an overview of the available runtime functionality in link:https://github.com/enonic/lib-react4xp[the React4xp library], v(REACT4XP_VERSION).
+
+{nbsp} +
+{nbsp} +
+{nbsp} +
+
+== XP controller functions
+
+These functions are used in XP controllers, to handle React4xp entries and render output HTML (`body`) and activating `pageContributions`.
+
+[NOTE]
+====
+*React4XP is built to _be contained_ in XP components, not to _contain_ them!* So React4XP runtime should not:
+
+- manipulate XP Regions,
+- use Regions (or elements within Regions) as target containers,
+- render any Region in the output `body`.
+
+The safest and easiest way is ensure this:
+
+- If you're using React4XP with a template that has a view, use a target container element that's separate from the region
+- If you want React4XP to render something inside a Region (e.g. React-rendered _and_ drag-and-droppable content), let an XP Part handle the React4XP, and drop the part into the region as shown in link:https://developer.enonic.com/templates/react4xp[the intro tutorial].
+====
+
+{nbsp} +
+
+=== Import
+[source,javascript,options="nowrap"]
+----
+const React4xp = require('/lib/enonic/react4xp');
+
+// Equivalent: import React4xp from '/lib/enonic/react4xp';
+----
+
+{nbsp} +
+
+=== Easy: all-in-one renderer
+[source,javascript,options="nowrap"]
+----
+React4xp.render(entry, props, request, params);
+
+----
+
+Main renderer and easiest usage. Default behavior: renders server-side and adds hydration logic for the client-side. On problems/errors, logs and falls back to a placeholder output which marks the problem on the page.
+
+*Signature:*
+
+- `entry` _(string|object, mandatory)_: Reference to the React4xp entry JSX file. Analogous to "view" parameter in the thymeleaf renderer etc. Can be a string or an object:
+  * If it's a string, it's interpreted as a jsxPath.
+  * If it's an object, it's interpreted as a component object from `portal.getComponent()`, and will be used to both find the JSX file and generate a unique ID (see also the params below).
+- `props` _(object, optional)_: Sends props to the JSX file. Analogous to "model" parameter in the thymeleaf renderer etc.
+- `request` _(object, optional-ish)_: XP request object (from controller get-method etc). *Mandatory for proper React rendering*, but strictly speacking optional. If omitted...
+  * the rendering will fall back to a template-like JSX rendering: outputs a static HTML string using the props,
+  * and it will not be activated/hydrated in the client.
+- `params` _(object, optional)_: Additional parameters controlling the React rendering. Each of them are optional within the params object:
+
+
+*Params:*
+
+- `clientRender` _(boolean)_: Controls server-side vs client-side rendering (as long as a `request` argument is given, see above).
+  * if this parameter is missing or falsy then server-side rendering (SSR) is the default behavior, and a static HTML string is rendered as output, and react `hydrate()` pageContributions are added.
+  * If set to `true`, however, client-side rendering is forced: only a target container with an element ID is rendered in the output, but react `render()` pageContributions are added.
+- `id` _(string)_: sets the target container element ID (by force - if an ID was generated from a component-type `entry` argument earlier, this manual ID will override the generated one). If no ID is set or generated from a component entry, a random unique ID is generated. Also:
+      *         If the ID matches a DOM element ID in an input `body` (see below), the rendered react component will be inserted in that element.
+      *         If not, a container with this ID will be added.
+      *         If there's no `body` parameter at all, an HTML string with a matching-ID element is generated.
+- `uniqueId` _(boolean|string)_: If set, takes an extra step to ensure a unique ID:
+      *         If an ID is already set (by previous param or using a component-object entry), a random integer will be postfixed to it.
+      *         If `uniqueId` is a string, this is the prefix before the random postfix. If the id param is used in addition to a `uniqueId` string, `uniqueId` takes presedence and overrides `id`.
+- `body` _(string)_: HTML string, for example a static string, or previously rendered from other react4xp output, thymeleaf or other templating engines.
+      *         If it already has a matching-ID target container, `body` passes through unchanged (use this option and the set the ID to control where in a `body` the react component should be rendered).
+      *         If it doesn't have a matching container, a matching `<div>` will be inserted at the end of the body, inside the root element.
+      *         If `body` is missing, a pure-target-container body is generated and returned.
+- `pageContributions` _(object)_: Pre-existing pageContributions. If added, page contributions generated during this rendering will be added to (merged with) the input parameter ones.
+
+*Return:*
+
+`render` returns a response object that can be directly returned from an XP controller, with the fields `body` and `pageContributions`: `body` will always contain at least a target container element for the react component. `pageContributions` will contain scripts referred by URL for running the component client-side and the component's dependencies, as well as an inline trigger script for starting the react frontend rendering into the target container. Duplicates in `pageContributions` will be removed, to avoid running identical scripts twice.
+
+
+{nbsp} +
+
+=== Flexible: react4xp objects
+
+==== Construction
+[source,javascript,options="nowrap"]
+----
+const comp = new React4xp(component|jsxPath);
+----
+
+The constructor has a mandatory parameter, _one_ of the following two. This follows the same logic as the `component` and `jsxPath` subfields in `params` in the shorthand rendering methods above:
+
+  * *Either* `component` _(object)_ Current-XP-component data; the output of `portal.getComponent()`. This will point to a local (same-name, same-folder as the component) react file. Derives and sets the component's `jsxPath` and its `id` (`react4xpId`) so they don't need to be set.
+  * *Or* `jsxPath` _(string)_ Pointer to any component. Sets the component's `jsxPath` but not the `id`.
+
+*Returns* the constructed data-holding object (`comp`) where these fields are readable:
+
+  * `.jsxPath` _(string)_ The jsxPath of the target react entry. The entry must exist.
+  * `.props` _(object)_ Component props, if set (see below),
+  * `.react4xpId` _(string)_ Component and target-container ID, if set (see below). If not set, the rendering methods will thow an error.
+
+{nbsp} +
+
+==== React4xp-object setters
+[source,javascript,options="nowrap"]
+----
+comp.setProps(props); <!--1-->
+comp.setJsxPath(jsxPath); <!--2-->
+comp.setId(id); <!--3-->
+comp.uniqueId(); <!--4-->
+
+// Sequence doesn't matter (except for setId, which can overwrite a previous uniqueId).
+// And a builder pattern is supported, so this would be equivalent:
+//
+//   comp.setProps(props)
+//       .setJsxPath(jsxPath)
+//       .setId(id)
+//       .uniqueId();
+----
+
+<1> `setProps(props)`: `props` _(object)_ is any object serializable by `JSON.stringify`. Overwrites previous props. Props will be fed to the entry component. Even if not set explicitly, the props received by the entry component will always contain the ID, as the field `react4xpId`.
+<2> `setJsxPath(jsxPath)`: `jsxPath` _(string)_ points to an entry component that must exist, jsxPath must be valid. Overwrites previous value.
+<3> `setId(id)`: `id` _(string)_ Identifies the react4xp component (`comp`) and points to a target container in the DOM to receive the react rendering. Preferrably a unique element `id` in the DOM. Corresponds to `comp.react4xpId` and `props.react4xpId`.
+<4> `uniqueId()`: enforces a unique element and component ID, by appending a random-number postfix. If an ID hasn't been set, it will become the random-number postfix.
+
+All of the above *return* the object itself, enabling the builder pattern.
+
+
+==== Reading out attributes
+
+{nbsp} +
+
+==== Rendering
+[source,javascript,options="nowrap"]
+----
+const htmlContent = comp.renderComponentString(overrideProps); <!--1-->
+
+const newBody = comp.renderTargetContainer(existingBody, htmlContent); <!--2-->
+
+const newBody = comp.renderSSRIntoContainer(existingBody); <!--3-->
+
+// Using renderSSRIntoContainer is equivalent to:
+// const newBody = comp.renderTargetContainer(existingBody, comp.renderComponentString());
+
+----
+
+<1> `comp.renderComponentString(overrideProps)`: (server-side) renders and returns a *simple HTML string representation of the data object*, without a container or any further `body` interaction, based on the `props` currently set in the data object, or `overrideProps` _(object, optional)_ if they are set.
+
+<2> `renderTargetContainer`: *Primary client-side body renderer*. Parameters:
+
+  * `existingBody` _(string, optional)_ String containing HTML, and only that. If empty, a target container (with an `id` matching the ID of the data object `comp`) will be returned. If there is an HTML string but a matching-ID container is not found, a target container is added _at the end of the root element of the HTML_, i.e. just before the final closing tag. If there's a string _with_ a matching ID, nothing is changed.
+  * `htmlContent` _(string, optional)_ HTML string. If empty or missing: no effect. If included, this will be injected inside the matching-ID container (that's guaranteed by the logic in the previous parameter), replacing any content that was already there. Note that in client-side rendering, `htmlContent` is usually left empty, leaving it to the client to inject some rendered content into the container.
+
+  * *Returns* a valid HTML string, ready to be returned from a controller as the `body` field in the response - or be sent as the `existingBody` into a rendering method of a different React4xp object (see the chaining example).
+
+<3> `renderSSRIntoContainer`: *Primary server-side body renderer*. First renders an HTML representation of the data object `comp` based on its current `props`, then injects that HTML into a (new or existing) matching-id target container in `existingBody`.  Parameters:
+  * `existingBody` _(string, optional)_ Same as `existingBody` for `.renderTargetContainer`: string containing HTML, and only that. If empty, a target container (with an `id` matching the ID of the data object `comp`) will be returned. If there is an HTML string but a matching-ID container is not found, a target container is added _at the end of the root element of the HTML_, i.e. just before the final closing tag. If there's a string _with_ a matching ID, nothing is changed.
+
+{nbsp} +
+
+.Data object pageContributions rendering:
+[source,javascript,options="nowrap"]
+----
+const newPageContributions = comp.renderClientPageContributions(existingPageContributions); <!--1-->
+
+const newPageContributions = comp.renderHydrationPageContributions(existingPageContributions); <!--2-->
+----
+
+<1> `renderClientPageContributions(existingPageContributions)`: *Primary client-side pageContributions renderer*. Returns a new page contributions object, with `existingPageContributions` _(object, optional)_ added to it, and the needed pageContributions to get the client to fetch the dependencies of `comp` and render it into the matching-ID container (provided by one of the body HTML rendering methods above). This includes the entry of `comp`, all the chunks of its imported dependencies, the client-side wrapper and the _externals_, meaning client-side runnable React and ReactDOM code, the same used for the client-side rendering. Trims the pageContributions before returning them, preventing excessive loading on the client side.
+
+<2> `renderHydrationPageContributions(existingPageContributions)`: *Primary server-side pageContributions renderer*. Identical to `.renderClientPageContributions` above, but expects that the matching-ID container already has the HTML of `comp` injected into it from the server - and then has the client trigger a https://reactjs.org/docs/react-dom.html#hydrate[react hydration] of it: activating the previously-passive HTML representation and turning it into a fully active react component.
+
+{nbsp} +
+
+== Services
+The four included React4xp services are exposed to the client and are central to how it fetches the assets, dependencies and the client wrapper itself. Half of what the auto-generated pageContributions are doing, uses the services. However, the services are directly usable as well. They are documented https://github.com/enonic/lib-react4xp#the-services[in the main library docs].
+
+{nbsp} +
+
+== Client-side wrapper
+Downloadable from the `/react4xp-client` service, is client-runnable code that wraps a few handy functions, used by the autogenerated pageContributions, but usable manually as well.
+
+It creates a `React4xp` global object in the browser, which will contain all things React4xp. It exposes three methods under the `React4xp.CLIENT` attribute:
+
+.Client-side wrapper functions:
+[source,javascript,options="nowrap"]
+----
+React4xp.CLIENT.render(Component, targetId, props); // corresponds to https://reactjs.org/docs/react-dom.html#render
+
+React4xp.CLIENT.hydrate(Component, targetId, props); // corresponds to https://reactjs.org/docs/react-dom.html#hydrate
+
+React4xp.CLIENT.renderWithDependencies(componentsTargetsAndProps, callback, serviceUrlRoot);
+----
+
+The first two methods are 'pure' renderers. This means that in addition to the client wrapper, you need to supply and run scripts for React and ReactDOM (which are bundled in the React4xp _externals_) - and scripts for the entries as well as all their chunks, before calling `render` or `hydrate`.
+
+However, you can also use React4xp components in a standalone html page, having only React/ReactDOM (or React4xp externals) and this client loaded in the browser: use `renderWithDependencies` as below.
+
+{nbsp} +
+
+=== render and hydrate
+They both have a `(Component, targetId [, props])` signature:
+
+  * `Component`: _(React4xp entry or any ReactDOM renderable, mandatory)_ If it's a function, the wrapper will try to turn it into a ReactDOM component by running `Component(props)`. When loading React4xp entries, they are exposed in the client as functions as part of the `React4xp` object: `React4xp[jsxPath] = (props) => Component`. A fallback has been added so that if an entry component has been compiled into a `.default` sub-attribute, the client can access the component both with and without the `default` field: if `React4xp.CLIENT.render(React4xp.myComponent.default, ...)` is strictly correct, then `React4xp.CLIENT.render(React4xp.MyComponent, ...)` will also work.
+  * `targetId` _(string, mandatory)_ The unique ID of an HTML container element, into which the component will be rendered. Obviously, this must exist in the DOM when running.
+  * `props`: _(object, optional)_ Top-level props that will be sent into the component. React4xp relies on serialization of this object, so _functions can't be passed in this way!_
+
+{nbsp} +
+
+=== renderWithDependencies
+This wraps a whole chain of necessary steps: when the client has the wrapper available, you know where to contact the services (the prefix: their common URL before the service names), you have some React4xp components you want to render and know their jsxPaths and props, then `renderWithDependencies` will take care of all the gritty details needed for a client-side render, in a single call for multiple React4xp components:
+
+  - contact the React4xp services,
+  - determine what the entries' chunk dependencies are,
+  - download and run those in parallel,
+  - then download and run the entry scripts,
+  - then run `render` on each of the entries,
+  - all the time preventing duplicate downloads.
+
+Parameters:
+
+  * `componentsTargetsAndProps` _(object, mandatory)_ Object where each entry is similar to the `Component, targetId, [, props]` signature mentioned above: the *keys*  are jsxPath strings of React4xp entries. The *values* are objects that have a mandatory `targetId` string and an optional `props` object.
+  * `callback` _(function, optional)_ This function is run after running `render`,
+  * `serviceUrlRoot` _(string, optional)_ Root of the URL to the `/react4xp` and `/react4xp-dependencies` link:#_services[services]. For example, if they have the URLs `/_/service/my.app/react4xp/` and `/_/service/my.app/react4xp-dependencies/`, then `serviceRootUrl` should be `/_/service/my.app` (without a trailing slash). This is _sort of optional_: you can skip it if you define a constant `SERVICE_URL_ROOT` in global namespace before running  `renderWithDependencies` (see link:#_5_webapp[the Webapp example]). If you don't, it's a mandatory argument.
+
+
+{nbsp} +
+{nbsp} +
+
+
+TRENGER MER:
+
+- XP6/7
+- ENTRIES
+- CHUNKS
+- JSXPATHS
+- WEBAPP
+- DATA OBJECTS
+- BUILD
+- CUSTOMIZATION
+- GOTCHAS
+
