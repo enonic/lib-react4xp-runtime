@@ -171,3 +171,18 @@ client.dependsOn += 'babelXP'
 jar.dependsOn += 'nashornPolyfills'
 jar.dependsOn += 'client'
 jar.outputs.dir('build/libs')
+
+import groovy.io.FileType
+asciidoctor.doLast {
+    def files = []
+    def dir = new File("build/docs/html5")
+    dir.eachFileRecurse(FileType.FILES) { file ->
+        def matcher = (file =~ /.*\.(.*)$/)
+        def extension = matcher[0][1]
+        if (extension in ["htm", "html"]) {
+            println("Replacing in [" + file + "]: '(REACT4XP_VERSION)' --> '" + project.properties['version'] + "'")
+            ant.replace(file: file, token: "(REACT4XP_VERSION)", value: project.properties['version'])
+        }
+    }
+    //
+}
