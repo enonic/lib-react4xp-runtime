@@ -17,7 +17,7 @@ These functions are used in XP controllers, to handle React4xp entries and rende
 
 [NOTE]
 ====
-*React4XP is built to _be contained_ in XP components, not to _contain_ them!* So React4XP runtime should not:
+*React4XP is built to _be contained_ in XP components, not to _contain_ them (for now).* So React4XP runtime should not:
 
 - manipulate XP Regions,
 - use Regions (or elements within Regions) as target containers,
@@ -90,25 +90,29 @@ Main renderer and easiest usage. Default behavior: renders server-side and adds 
 === Flexible: react4xp objects
 
 ==== Construction
+
 [source,javascript,options="nowrap"]
 ----
 const comp = new React4xp(component|jsxPath);
 ----
+
+*Signature:*
 
 The constructor has a mandatory parameter, _one_ of the following two. This follows the same logic as the `component` and `jsxPath` subfields in `params` in the shorthand rendering methods above:
 
   * *Either* `component` _(object)_ Current-XP-component data; the output of `portal.getComponent()`. This will point to a local (same-name, same-folder as the component) react file. Derives and sets the component's `jsxPath` and its `id` (`react4xpId`) so they don't need to be set.
   * *Or* `jsxPath` _(string)_ Pointer to any component. Sets the component's `jsxPath` but not the `id`.
 
-*Returns* the constructed data-holding object (`comp`) where these fields are readable:
+*Returns:*
 
-  * `.jsxPath` _(string)_ The jsxPath of the target react entry. The entry must exist.
-  * `.props` _(object)_ Component props, if set (see below),
-  * `.react4xpId` _(string)_ Component and target-container ID, if set (see below). If not set, the rendering methods will thow an error.
+The constructed data-holding object (called `comp` below).
 
 {nbsp} +
 
-==== React4xp-object setters
+==== Setters and attributes
+
+The constructed object has some *setter methods*:
+
 [source,javascript,options="nowrap"]
 ----
 comp.setProps(props); <!--1-->
@@ -116,66 +120,70 @@ comp.setJsxPath(jsxPath); <!--2-->
 comp.setId(id); <!--3-->
 comp.uniqueId(); <!--4-->
 
-// Sequence doesn't matter (except for setId, which can overwrite a previous uniqueId).
-// And a builder pattern is supported, so this would be equivalent:
-//
-//   comp.setProps(props)
-//       .setJsxPath(jsxPath)
-//       .setId(id)
-//       .uniqueId();
+/*
+Sequence doesn't matter (except for setId,
+which can overwrite a previous uniqueId).
+Each setter returns the object itself,
+enabling a Builder pattern. So this would
+be equivalent to the above:
+
+comp.setProps(props)
+	.setJsxPath(jsxPath)
+	.setId(id)
+	.uniqueId();
+
+*/
 ----
 
-<1> `setProps(props)`: `props` _(object)_ is any object serializable by `JSON.stringify`. Overwrites previous props. Props will be fed to the entry component. Even if not set explicitly, the props received by the entry component will always contain the ID, as the field `react4xpId`.
+<1> `setProps(props)`: Sets the react4xp object's top-level props, which will be fed to the entry component. `props` _(object)_ is any object fully serializable by `JSON.stringify`. Functions can't be passed as top-level props. Overwrites previous props. Even if not set explicitly, the props received by the entry component will always contain the ID, as `react4xpId`.
 <2> `setJsxPath(jsxPath)`: `jsxPath` _(string)_ points to an entry component that must exist, jsxPath must be valid. Overwrites previous value.
 <3> `setId(id)`: `id` _(string)_ Identifies the react4xp component (`comp`) and points to a target container in the DOM to receive the react rendering. Preferrably a unique element `id` in the DOM. Corresponds to `comp.react4xpId` and `props.react4xpId`.
 <4> `uniqueId()`: enforces a unique element and component ID, by appending a random-number postfix. If an ID hasn't been set, it will become the random-number postfix.
 
-All of the above *return* the object itself, enabling the builder pattern.
+The setters correspond to these *readable attributes* in the object:
 
-
-==== Reading out attributes
-
-{nbsp} +
-
-==== Rendering
 [source,javascript,options="nowrap"]
 ----
-const htmlContent = comp.renderComponentString(overrideProps); <!--1-->
-
-const newBody = comp.renderTargetContainer(existingBody, htmlContent); <!--2-->
-
-const newBody = comp.renderSSRIntoContainer(existingBody); <!--3-->
-
-// Using renderSSRIntoContainer is equivalent to:
-// const newBody = comp.renderTargetContainer(existingBody, comp.renderComponentString());
-
+comp.props <!--1-->
+comp.jsxPath <!--2-->
+comp.react4xpId <!--3-->
 ----
+<1> `props` _(object)_ React props passed to the entry.
+<2> `jsxPath` _(string)_ The jsxPath of the target react entry. The entry must exist.
+<3> `react4xpId` _(string)_ Component and target-container ID, if set (see below). If not set, the rendering methods will generate a random ID.
 
-<1> `comp.renderComponentString(overrideProps)`: (server-side) renders and returns a *simple HTML string representation of the data object*, without a container or any further `body` interaction, based on the `props` currently set in the data object, or `overrideProps` _(object, optional)_ if they are set.
 
-<2> `renderTargetContainer`: *Primary client-side body renderer*. Parameters:
+==== Rendering the react4xp data object
 
-  * `existingBody` _(string, optional)_ String containing HTML, and only that. If empty, a target container (with an `id` matching the ID of the data object `comp`) will be returned. If there is an HTML string but a matching-ID container is not found, a target container is added _at the end of the root element of the HTML_, i.e. just before the final closing tag. If there's a string _with_ a matching ID, nothing is changed.
-  * `htmlContent` _(string, optional)_ HTML string. If empty or missing: no effect. If included, this will be injected inside the matching-ID container (that's guaranteed by the logic in the previous parameter), replacing any content that was already there. Note that in client-side rendering, `htmlContent` is usually left empty, leaving it to the client to inject some rendered content into the container.
+HTML body and page contributions are rendered separately here. *Both are necessary* for react rendering to work properly:
 
-  * *Returns* a valid HTML string, ready to be returned from a controller as the `body` field in the response - or be sent as the `existingBody` into a rendering method of a different React4xp object (see the chaining example).
-
-<3> `renderSSRIntoContainer`: *Primary server-side body renderer*. First renders an HTML representation of the data object `comp` based on its current `props`, then injects that HTML into a (new or existing) matching-id target container in `existingBody`.  Parameters:
-  * `existingBody` _(string, optional)_ Same as `existingBody` for `.renderTargetContainer`: string containing HTML, and only that. If empty, a target container (with an `id` matching the ID of the data object `comp`) will be returned. If there is an HTML string but a matching-ID container is not found, a target container is added _at the end of the root element of the HTML_, i.e. just before the final closing tag. If there's a string _with_ a matching ID, nothing is changed.
-
-{nbsp} +
-
-.Data object pageContributions rendering:
 [source,javascript,options="nowrap"]
 ----
-const newPageContributions = comp.renderClientPageContributions(existingPageContributions); <!--1-->
+const body = comp.renderBody(params); <!--1-->
+const pageContributions = comp.renderPageContributions(params); <!--2-->
 
-const newPageContributions = comp.renderHydrationPageContributions(existingPageContributions); <!--2-->
+/*
+Ready to return from an XP controller:
+
+return { body, pageContributions };
+*/
 ----
 
-<1> `renderClientPageContributions(existingPageContributions)`: *Primary client-side pageContributions renderer*. Returns a new page contributions object, with `existingPageContributions` _(object, optional)_ added to it, and the needed pageContributions to get the client to fetch the dependencies of `comp` and render it into the matching-ID container (provided by one of the body HTML rendering methods above). This includes the entry of `comp`, all the chunks of its imported dependencies, the client-side wrapper and the _externals_, meaning client-side runnable React and ReactDOM code, the same used for the client-side rendering. Trims the pageContributions before returning them, preventing excessive loading on the client side.
+<1> Generates an HTML rendering of the data object, or adds a rendering to other HTML. Returns an HTML string (ready to be returned as `body` in a controller's response object, or passed though yet another React4xp data oject's `renderBody` method). There will always be an output HTML with a matching-ID target container, but you can use the `body` parameter to add custom pre-existing HTML around what's rendered here. `params` _(optional object)_ can contain additional optional parameters controlling the react rendering:
+* `body` _(string)_: Pre-existing HTML string that will be passed through this rendering. The new rendered HTML will be inserted into `body`, by these rules: If `body` has one element whose ID matches the ID of this react4xp object (`react4xpId`), that element will be the target container element for this rendering. If there is no matching ID, a new target container (with an ID matching `react4xpId`) will be generated at the end of `body`. If no `body` is entered at all, a new HTML with a matching-ID target container is generated.
+* `clientRender` _(boolean)_: if `clientRender` is falsy or unset, there will be a server-side rendering: a static HTML string is rendered from the data object (and its React code and props), and this HTML is inserted into the target container. If `clientRender` is truthy, the target container is left empty - ready to be filled in a client-side rendering (see below. For this reason, the `clientRender`  value should usually match between `renderBody` and `renderPageContributions`).
+<2> Generates and returns XP page contributions. These page contributions activate the React entry in the client (whether it's triggering a client-side rendering or hydrating a server-side rendered entry). More precisely: adds client-side dependency chunks (core React4xp frontend, shared libs and components, and the entry component scripts), adds small scripts that trigger the component scripts, and prevents duplicate references to dependencies. `params` _(optional object)_ are additional parameters to control the react rendering:
+* `pageContributions` _(object)_: pre-existing page contributions object to pass through this rendering. These pre-existing page contributions will be added at the beginning of the rendered output pageContributions.
+* `clientRender` _(boolean)_: If falsy or unset, server-side rendering is assumed, and a `hydrate` command is called on the entry instead. If `clientRender` is truthy, this function will assume that the react4xp entry is being rendered (by `renderBody`) client-side instead of server-side, and only calls a `render` command in the client.
 
-<2> `renderHydrationPageContributions(existingPageContributions)`: *Primary server-side pageContributions renderer*. Identical to `.renderClientPageContributions` above, but expects that the matching-ID container already has the HTML of `comp` injected into it from the server - and then has the client trigger a https://reactjs.org/docs/react-dom.html#hydrate[react hydration] of it: activating the previously-passive HTML representation and turning it into a fully active react component.
+[NOTE]
+====
+*Rendering the data object is different from the `React4xp.render` link:#_easy_all_in_one_renderer[all-in-one method] in a few ways:*
+
+* First, the rendering methods expect the data-object attributes to be completely set before rendering, instead of passing them to the render method as attributes.
+* Second, it doesn't automatically handle the `request` to keep Content Studio and the React client code from interfering with each other, but leaves it up to you (link:#TODO[read more about how here]).
+* Third, instead of rendering a full response object, it renders the HTML body and the page contributions separately
+====
 
 {nbsp} +
 
@@ -235,15 +243,22 @@ Parameters:
 {nbsp} +
 
 
-TRENGER MER:
+
+TRENGER MER OM:
 
 - XP6/7
-- ENTRIES
-- CHUNKS
-- JSXPATHS
-- WEBAPP
-- DATA OBJECTS
-- BUILD
-- CUSTOMIZATION
-- GOTCHAS
+- KONSEPTER / TERMINOLOGI
+	- ENTRIES
+	- CHUNKS
+	- JSXPATHS
+	- DATA OBJECTS
+- HOWTOS and GOTCHAS
+	- BUILD WITH STARTER
+	- IMPORT INTO YOUR PROJECT
+	- CUSTOMIZATION
+		- REACT VERSION
+		- NASHORN POLYFILLING
+		- WEBPACK
+		- MANUALLY PROTECTING CONTENT STUDIO CLIENT IN EDIT/INLINE MODE
+	- WEBAPP: CLIENT-SIDE STANDALONE
 

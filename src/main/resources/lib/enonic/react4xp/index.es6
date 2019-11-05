@@ -318,7 +318,21 @@ class React4xp {
     }
 
 
-
+    /** Main body rendering method. Returns an HTML string ready to be returned as `body` in a controller's response object (or passed though 
+     *  another React4xp data oject's renderBody method). There will always be an output HTML with a matching-ID target container, but you can
+     *  use the body parameter to add custom pre-existing HTML around what's rendered here.
+     * @param params {object} Additional optional parameters controlling the react rendering:
+     *     - body {string}: Pre-existing HTML string that will be passed through this rendering. 
+     *         The new rendered HTML will be inserted into the pre-existing HTML body, by these rules: 
+     *         If the pre-existing HTML has one element whose ID matches the ID (react4xpId) of this react4xp object, that element will be
+     *         target container element for this rendering. If there is no matching ID, a new target container (with a matching ID) will be 
+     *         generated at the end of the pre-existing HTML body. If no HTML body is entered at all, a new HTML with a matching-ID target 
+     *         container is generated.
+     *    - clientRender {boolean}: if clientRender is falsy or unset, there will be a server-side rendering: a static HTML string is rendered
+     *         from the data object (and its React code and props), and this HTML is inserted into the target container. If clientRender is 
+     *         truthy, the target container is left empty - ready to be filled in a client-side rendering (see below. For this reason, the 
+     *         clientRender value should usually match between renderBody and renderPageContributions).
+     */
     renderBody = params => {
         const {body, clientRender} = params || {};
 
@@ -335,8 +349,8 @@ class React4xp {
      * Also returns/adds small scripts that trigger the component scripts. Prevents duplicate references to dependencies.
      *
      * @param params {object} Additional parameters controlling the react rendering. All of them are optional:
-     *      - pageContributions PageContributions object that will be added before the new pageContributions.
-     *      - clientRender If clientRender is truthy, this function will assume that the react4xp entry is not being rendered
+     *      - pageContributions {object}: PageContributions object that will be added before the new pageContributions.
+     *      - clientRender {boolean}: If clientRender is truthy, this function will assume that the react4xp entry is not being rendered
      *          server-side (by .renderBody), and only calls a 'render' command in the client. If omitted or falsy, server-side
      *          rendering is assumed, and a 'hydrate' command is called on the entry instead.
      */
