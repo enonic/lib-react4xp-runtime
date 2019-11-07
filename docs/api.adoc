@@ -169,10 +169,10 @@ return { body, pageContributions };
 */
 ----
 
-<1> Generates an HTML rendering of the data object, or adds a rendering to other HTML. Returns an HTML string (ready to be returned as `body` in a controller's response object, or passed though yet another React4xp data oject's `renderBody` method). There will always be an output HTML with a matching-ID target container, but you can use the `body` parameter to add custom pre-existing HTML around what's rendered here. `params` _(optional object)_ can contain additional optional parameters controlling the react rendering:
+<1> `renderBody` generates an HTML rendering of the data object, or adds a rendering to other HTML. Returns an HTML string (ready to be returned as `body` in a controller's response object, or passed though yet another React4xp data oject's `renderBody` method). There will always be an output HTML with a matching-ID target container, but you can use the `body` parameter to add custom pre-existing HTML around what's rendered here. `params` _(optional object)_ can contain additional optional parameters controlling the react rendering:
 * `body` _(string)_: Pre-existing HTML string that will be passed through this rendering. The new rendered HTML will be inserted into `body`, by these rules: If `body` has one element whose ID matches the ID of this react4xp object (`react4xpId`), that element will be the target container element for this rendering. If there is no matching ID, a new target container (with an ID matching `react4xpId`) will be generated at the end of `body`. If no `body` is entered at all, a new HTML with a matching-ID target container is generated.
 * `clientRender` _(boolean)_: if `clientRender` is falsy or unset, there will be a server-side rendering: a static HTML string is rendered from the data object (and its React code and props), and this HTML is inserted into the target container. If `clientRender` is truthy, the target container is left empty - ready to be filled in a client-side rendering (see below. For this reason, the `clientRender`  value should usually match between `renderBody` and `renderPageContributions`).
-<2> Generates and returns XP page contributions. These page contributions activate the React entry in the client (whether it's triggering a client-side rendering or hydrating a server-side rendered entry). More precisely: adds client-side dependency chunks (core React4xp frontend, shared libs and components, and the entry component scripts), adds small scripts that trigger the component scripts, and prevents duplicate references to dependencies. `params` _(optional object)_ are additional parameters to control the react rendering:
+<2> `renderPageContributions` generates and returns XP page contributions. These page contributions activate the React entry in the client (whether it's triggering a client-side rendering or hydrating a server-side rendered entry). More precisely: adds client-side dependency chunks (core React4xp frontend, shared libs and components, and the entry component scripts), adds small scripts that trigger the component scripts, and prevents duplicate references to dependencies. `params` _(optional object)_ are additional parameters to control the react rendering:
 * `pageContributions` _(object)_: pre-existing page contributions object to pass through this rendering. These pre-existing page contributions will be added at the beginning of the rendered output pageContributions.
 * `clientRender` _(boolean)_: If falsy or unset, server-side rendering is assumed, and a `hydrate` command is called on the entry instead. If `clientRender` is truthy, this function will assume that the react4xp entry is being rendered (by `renderBody`) client-side instead of server-side, and only calls a `render` command in the client.
 
@@ -186,9 +186,74 @@ return { body, pageContributions };
 ====
 
 {nbsp} +
+{nbsp} +
 
 == Services
-The four included React4xp services are exposed to the client and are central to how it fetches the assets, dependencies and the client wrapper itself. Half of what the auto-generated pageContributions are doing, uses the services. However, the services are directly usable as well. They are documented https://github.com/enonic/lib-react4xp#the-services[in the main library docs].
+The React4xp lib exposes four link:https://xp.readthedocs.io/en/stable/developer/services/index.html[XP services] that can be used from the client. The controller functions render page contributions that call on these services, so in most cases you don't need to worry about this, but the service specs look like this:
+
+{nbsp} +
+
+=== Fetching static assets: `/react4xp`
+
+The `/react4xp` service returns JS assets needed to run your react components in the browser. The assets can be either entries or dependency chunks, after webpack compilation.
+
+Accessed on:
+[source]
+----
+[domain]/_/service/[appName]/react4xp/[assetName]
+----
+...or from Thymeleaf:
+[source,html,options="nowrap"]
+----
+<script data-th-src="${portal.serviceUrl({'_service=react4xp/[assetName]'})}"></script>
+----
+
+`[assetName]` is the name of the _compiled_ file, relative to the React4xp build folder (`build/resources/main/assets/react4xp/`). This is the reason for _rendering_ these page contributions: that process handles all differences in file names across the compilation, as well as auto-tracking each dependency. For entry files, `assetName` will be the same as the _jsxPath_, with `.js` at the end.
+
+So for example, for the app _my.app_ running on _mydomain.com_, `www.mydomain.com/_/service/my.app/react4xp/myEntry.js` would look for and return compiled entry `myEntry` - originally `myEntry.jsx`.
+
+If nothing was found on `assetName`, the response will be a `404 - Not Found`.
+
+{nbsp} +
+
+=== Dependency tracking: `/react4xp-dependencies`
+
+The `/react4xp-dependencies` service returns a JSON array of all asset URLs for dependency chunks that a list of entries need to run, between them. In a browser, these should of course be fetched and run _before the entry assets themselves_. Each asset in the array will be unique, preventing repeated and excessive loading. Dependecy chunks are content hashed in their file names, prepared for client-caching when fetched from the `/react4xp` service (which is the natural next step).
+
+Accessed on:
+[source]
+----
+[domain]/_/service/[appName]/react4xp-dependencies/[entryNameOrNames]
+
+...or equivalent:
+
+[domain]/_/service/[appName]/react4xp-dependencies?[entryNameOrNames]
+----
+...or in Thymeleaf, similarly to `/react4xp` above.
+
+`[entryNameOrNames]` is one or more jsxPaths to React4xp entries, separated by ampersand `&`.
+
+For example, if the entry `myFirstEntry.jsx` and `mySecondEntry.jsx` both import code from `myChunk/myDependency.es6`, the imported code will be compiled into `myChunk` with a content hash - e.g. `myChunk.eb2abe4fac.js`. Then, calling the service with...
+[source]
+====
+`www.mydomain.com/_/service/my.app/react4xp-dependencies/myFirstEntry&mySecondEntry`
+====
+...will return this `application/json` response:
+
+[source,json,options="nowrap"]
+----
+[
+	"www.mydomain.com/_/service/my.app/react4xp/myChunk.eb2abe4fac.js"
+]
+----
+
+[TIP]
+====
+Jump here for link:#TODO[more info about entries, chunks and compilation].
+====
+
+
+
 
 {nbsp} +
 

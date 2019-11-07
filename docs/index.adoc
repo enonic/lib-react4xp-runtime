@@ -11,7 +11,8 @@ image::react4xp.svg["React4xp logo",width=256px]
 == Overview
 
 This is the technical documentation pages for link:https://github.com/enonic/lib-react4xp[the React4xp library], v(REACT4XP_VERSION).
- *React4XP is an Enonic XP library with a companion build setup*, that:
+
+*React4XP is an Enonic XP library with a companion build setup*, that:
 
 - makes it easy to get started with rendering React from ordinary XP controllers - making JSX look like any other templating engine,
 - is flexible enough to cover many more advanced use cases,

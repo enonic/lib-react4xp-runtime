@@ -1,6 +1,6 @@
 // The service /dependencies has two modes:
-//   - 'dependencies/urls' returns an array of dependency URLS.
-//   - just 'dependencies' will return them as HTML script tags.
+//   - 'dependencies/urls' returns an array of dependency URLS. // <-- TODO: STALE COMMENT? Seems this is what /dependencies does, and there's no HTMLS script tag functionality?
+//   - just 'dependencies' will return them as HTML script tags. 
 const { getComponentChunkUrls } = require('/lib/enonic/react4xp/dependencies');
 const { getSuffix } = require('/lib/enonic/react4xp/serviceRoots');
 
