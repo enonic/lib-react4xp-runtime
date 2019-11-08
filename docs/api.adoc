@@ -402,7 +402,7 @@ There is one caveat: `renderWithDependencies` needs to know the root path to the
 [domain]/_/service/[appName]/
 ----
 
-In all the examples for the services above, the service root URL would be `/_/service/my.app/`. As you see below, you can choose to add it by a parameter or a global variable before the call.
+In all the examples for the services above, the service root URL would be `/_/service/my.app/`. As you see below, you can choose to add it by a parameter or a global variable before the call. This is equal to `portal.serviceUrl({'_service='})`, by the way.
 
 *Parameters:*
 
@@ -413,8 +413,6 @@ In all the examples for the services above, the service root URL would be `/_/se
 *Example:*
 [source,html5,options="nowrap"]
 ----
-<script data-th-text="|var SERVICE_URL_ROOT=`${portal.serviceUrl({'_service='})}`;|"></script>
-
 <script>
     React4xp.CLIENT.renderWithDependencies(
         {
@@ -430,11 +428,108 @@ In all the examples for the services above, the service root URL would be `/_/se
         },
 
         // Callback:
-        function() { console.log("This callback is inserted and called after rendering."); }
+        function() { console.log("This callback is inserted and called after rendering."); },
 
+        '/_/service/my.app'
     );
 </script>
 ----
+
+{nbsp} +
+{nbsp} +
+
+=== Example: everything in context
+
+Just to demonstrate how everything fits together on the client side, here's a stripped-down Thymeleaf example.
+
+This is *standalone*, in the sense that it doesn't use any XP controllers but will run like this in an XP context (given the compiled entries `ColorThing` and `site/parts/chaining/chaining`, of course):
+
+[source,thymeleafexpressions,options="nowrap"]
+----
+<html>
+  <head>
+    <script data-th-text="|var SERVICE_URL_ROOT=`${portal.serviceUrl({'_service='})}`;|"></script> <!--1-->
+
+    <script data-th-src="${portal.serviceUrl({'_service=react4xp-externals'})}"></script> <!--2-->
+    <script data-th-src="${portal.serviceUrl({'_service=react4xp-client'})}"></script> <!--3-->
+  </head>
+
+  <body>
+    <div id="color_thing"></div>  <!--4-->
+    <div id="clickable_thing"></div>
+
+    <script>
+      React4xp.CLIENT.renderWithDependencies(  <!--5-->
+        {
+            ColorThing: {
+                targetId: 'color_thing',
+                props: { color: "crimson"}
+            },
+
+            'site/parts/chaining/chaining': {
+                targetId: 'clickable_thing',
+                props: { title: "Come On!", text: "Click Me Already!" },
+            },
+        }
+      );
+    </script>
+  </body>
+</html>
+----
+
+
+That's it. *What happened there?*
+
+<1> `SERVICE_ROOT_URL` is resolved and set globally.
+<2> React and ReactDOM are made available...
+<3> ...and so is the React4xp client wrapper.
+<4> Target container elements are set up. Empty for now, but rendering will fill these up.
+<5> Next, `renderWithDependencies` goes to work:
+
+Let's say the entries `ColorThing` and `site/parts/chaining/chaining` had two compiled dependencies between them, `chunk1.js` and `chunk2.js`. And let's say `SERVICE_URL_ROOT` in the beginning was resolved to `/_/service/my.app/`.
+
+The `renderWithDependencies` function just wraps the functionality that the XP controller functions handle. So it would first fetch...
+
+====
+/_/service/my.app/react4xp-dependencies?ColorThing&site/parts/chaining/chaining
+====
+
+...to see what the entries need to run. It would then use the reponse to populate the DOM with the dependency assets:
+
+[source,html5,options="nowrap"]
+----
+  <script url="/_/service/my.app/react4xp/chunk1.js"></script>
+  <script url="/_/service/my.app/react4xp/chunk2.js"></script>
+----
+
+Next, it populates the DOM with the entry assets:
+
+[source,html5,options="nowrap"]
+----
+  <script url="/_/service/my.app/react4xp/ColorThing.js"></script>
+  <script url="/_/service/my.app/react4xp/site/parts/chaining/chaining.js"></script>
+----
+
+And finally it populates the DOM with the rendering trigger calls (which again are abstractions of some more basic React calls:
+
+[source,html5,options="nowrap"]
+----
+  <script defer>
+      React4xp.CLIENT.render(
+          React4xp.ColorThing,
+          'color_thing',
+          {color: "crimson"}
+      );
+
+      React4xp.CLIENT.render(
+          React4xp['site/parts/chaining/chaining'],
+          'clickable_thing',
+          { title: "Come On!", text: "Click Me Already!" }
+      );
+  </script>
+----
+
+And finally, we're skipping the optional callback function in `renderWithDependencies`. No service root URL parameter is needed either, since `SERVICE_URL_ROOT` was defined earlier.
 
 {nbsp} +
 {nbsp} +
