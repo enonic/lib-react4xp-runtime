@@ -37,9 +37,13 @@ See the link:api.html[React4xp API documentation]:
 
 - link:api.html#_xp_controller_functions[XP controller functions]: Functions to use in XP controllers. They handle React4xp entries and render output HTML (`body`) and activating page contributions.
 - link:api.html#_services[Services]: React4xp exposes some service endpoints to the client. These are central to running things in the client after the output from the XP controller: fetching the entry assets, their dependency chunks, and the client wrapper itself.
-- link:api.html#_client_side_wrapper[Client-side wrapper]: Client-runnable code that wraps a few handy functions, most importantly `render` and `hydrate`.
+- link:api.html#_client_side_wrapper_api[Client-side wrapper]: Client-runnable code that wraps a few handy functions, most importantly `render` and `hydrate`.
 
 The output from the controller functions use the services and the client wrapper, but they can both also be used as standalone functionality in the client.
+
+
+TRENGER MER OM:
+
 
 
 TRENGER MER OM:
@@ -53,10 +57,11 @@ TRENGER MER OM:
 - HOWTOS and GOTCHAS
 	- BUILD WITH STARTER
 	- IMPORT INTO YOUR PROJECT
+	- TROUBLESHOOTING
 	- CUSTOMIZATION
 		- REACT VERSION
 		- NASHORN POLYFILLING
 		- WEBPACK
 		- MANUALLY PROTECTING CONTENT STUDIO CLIENT IN EDIT/INLINE MODE
 	- WEBAPP: CLIENT-SIDE STANDALONE
-
+- FAQ?

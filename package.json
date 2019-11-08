@@ -7,9 +7,10 @@
     "doc": "docs"
   },
   "scripts": {
-    "devdocs": "npm-run-all --parallel dev:compiledocs dev:server",
+    "devdocs": "npm run dev:compiledocs && npm-run-all --parallel dev:server dev:watchdocs",
     "dev:server": "node devserver.js",
-    "dev:compiledocs": "./gradlew asciidoctor -t",
+    "dev:compiledocs": "./gradlew asciidoctor",
+    "dev:watchdocs": "./gradlew asciidoctor -t",
     "test": "NODE_PATH=./ mocha --compilers js:babel-core/register --require babel-polyfill --require test/test_helper.js \"test/**/*@(.js)\""
   },
   "repository": {
