@@ -197,7 +197,7 @@ The React4xp lib exposes four link:https://xp.readthedocs.io/en/stable/developer
 
 The `/react4xp` service returns JS assets needed to run your react components in the browser. The assets can be either entries or dependency chunks, after webpack compilation.
 
-Accessed on:
+*Access:*
 [source]
 ----
 [domain]/_/service/[appName]/react4xp/[assetName]
@@ -208,9 +208,15 @@ Accessed on:
 <script data-th-src="${portal.serviceUrl({'_service=react4xp/[assetName]'})}"></script>
 ----
 
+*Parameters:*
+
 `[assetName]` is the name of the _compiled_ file, relative to the React4xp build folder (`build/resources/main/assets/react4xp/`). This is the reason for _rendering_ these page contributions: that process handles all differences in file names across the compilation, as well as auto-tracking each dependency. For entry files, `assetName` will be the same as the _jsxPath_, with `.js` at the end.
 
-So for example, for the app _my.app_ running on _mydomain.com_, `www.mydomain.com/_/service/my.app/react4xp/myEntry.js` would look for and return compiled entry `myEntry` - originally `myEntry.jsx`.
+*Example*
+
+On the app _my.app_ running on _mydomain.com_, `www.mydomain.com/_/service/my.app/react4xp/myEntry.js` would look for and return the compiled entry `myEntry` - originally `myEntry.jsx`.
+
+*Errors:*
 
 If nothing was found on `assetName`, the response will be a `404 - Not Found`.
 
@@ -218,22 +224,26 @@ If nothing was found on `assetName`, the response will be a `404 - Not Found`.
 
 === Dependency tracking: `/react4xp-dependencies`
 
-The `/react4xp-dependencies` service returns a JSON array of all asset URLs for dependency chunks that a list of entries need to run, between them. In a browser, these should of course be fetched and run _before the entry assets themselves_. Each asset in the array will be unique, preventing repeated and excessive loading. Dependecy chunks are content hashed in their file names, prepared for client-caching when fetched from the `/react4xp` service (which is the natural next step).
+The `/react4xp-dependencies` service *returns* a JSON array of all asset URLs for dependency chunks that a list of entries need to run, between them. In a browser, these should of course be fetched and run _before the entry assets themselves_. Each asset in the array will be unique, preventing repeated and excessive loading. Dependecy chunks are content hashed in their file names, prepared for client-caching when fetched from the `/react4xp` service (which is the natural next step).
 
-Accessed on:
+*Access:*
 [source]
 ----
-[domain]/_/service/[appName]/react4xp-dependencies/[entryNameOrNames]
-
-...or equivalent:
-
 [domain]/_/service/[appName]/react4xp-dependencies?[entryNameOrNames]
+
+A slash instead of question mark is also possible:
+
+[domain]/_/service/[appName]/react4xp-dependencies/[entryNameOrNames]
 ----
 ...or in Thymeleaf, similarly to `/react4xp` above.
 
+*Parameters:*
+
 `[entryNameOrNames]` is one or more jsxPaths to React4xp entries, separated by ampersand `&`.
 
-For example, if the entry `myFirstEntry.jsx` and `mySecondEntry.jsx` both import code from `myChunk/myDependency.es6`, the imported code will be compiled into `myChunk` with a content hash - e.g. `myChunk.eb2abe4fac.js`. Then, calling the service with...
+*Example:*
+
+If the entry `myFirstEntry.jsx` and `mySecondEntry.jsx` both import code from `myChunk/myDependency.es6`, the imported code will be compiled into `myChunk` with a content hash - e.g. `myChunk.eb2abe4fac.js`. Then, calling the service with...
 [source]
 ====
 `www.mydomain.com/_/service/my.app/react4xp-dependencies/myFirstEntry&mySecondEntry`
@@ -246,6 +256,10 @@ For example, if the entry `myFirstEntry.jsx` and `mySecondEntry.jsx` both import
 	"www.mydomain.com/_/service/my.app/react4xp/myChunk.eb2abe4fac.js"
 ]
 ----
+
+*Errors:*
+
+If one of the entries in `[entryNameOrNames]` were not found (as compiled files under `build/resources/main/assets/react4xp/`), the service will return 404 and a diagnostic response.
 
 [TIP]
 ====
