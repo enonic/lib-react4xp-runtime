@@ -533,3 +533,7 @@ And finally, we're skipping the optional callback function in `renderWithDepende
 
 {nbsp} +
 {nbsp} +
+
+== TODO
+
+Add API doc under link:http://127.0.0.1:5050/api.html#_flexible_react4xp_objects[react4xp objects], for renderEntryToHtml (lib/enonic/react4xp/index.es6:307, #React4xp.renderEntryToHtml)
