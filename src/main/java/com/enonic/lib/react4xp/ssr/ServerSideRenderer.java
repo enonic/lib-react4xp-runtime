@@ -6,7 +6,6 @@ import com.enonic.xp.resource.ResourceService;
 import com.enonic.xp.script.bean.BeanContext;
 import com.enonic.xp.script.bean.ScriptBean;
 import com.enonic.xp.server.RunMode;
-import jdk.nashorn.api.scripting.NashornScriptEngine;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -14,6 +13,7 @@ import org.json.JSONArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ public class ServerSideRenderer implements ScriptBean {
     private String SCRIPTS_HOME = null;
     private String LIBRARY_NAME = null;
     private String APP_NAME = null;
-    private NashornScriptEngine ENGINE = null;
+    private ScriptEngine ENGINE = null;
     private RunMode RUN_MODE = RunMode.get();
     private Supplier<ResourceService> RESOURCE_SERVICE_SUPPLIER;
 

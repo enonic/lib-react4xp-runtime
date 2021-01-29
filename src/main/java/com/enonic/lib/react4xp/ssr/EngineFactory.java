@@ -1,9 +1,12 @@
 package com.enonic.lib.react4xp.ssr;
 
 import jdk.nashorn.api.scripting.NashornScriptEngine;
+import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.io.IOException;
@@ -15,7 +18,7 @@ import java.util.LinkedList;
 public class EngineFactory {
     private final static Logger LOG = LoggerFactory.getLogger( EngineFactory.class );
 
-    private final NashornScriptEngine ENGINE = (NashornScriptEngine) new ScriptEngineManager().getEngineByName("nashorn");
+    private final ScriptEngine ENGINE = new NashornScriptEngineFactory().getScriptEngine( "--persistent-code-cache", "--class-cache-size=1000");
 
     // Basic-level polyfills. For some reason, this must be run from here, not from nashornPolyfills.js.
     // TODO: shouldn't be a string here, but read from a JS file, preferrably in the react4xp-runtime-nashornpolyfills package.
@@ -187,7 +190,7 @@ public class EngineFactory {
      * Scripts found in chunks.json depend on the previous and must be the last!
      * nashornPolyfills.js script is the basic dependency, and will be added at the very beginning
      * outside of this list. */
-    public NashornScriptEngine initEngine(
+    public ScriptEngine initEngine(
             String CHUNKFILES_HOME,
             String NASHORNPOLYFILLS_FILENAME,
             String ENTRIES_SOURCEFILENAME,
